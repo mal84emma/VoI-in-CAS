@@ -9,6 +9,10 @@ an asset capcity design task (scenario optimisation supported).
 Order of operations:
 - Initalise model object with first scenario `env`
 - Load additional scenario `envs`
+- Set tau (for control use)
+- Load data (for all scenarios)
+- Generate LP
+- Solve
 """
 
 from citylearn.citylearn import CityLearnEnv
@@ -32,13 +36,9 @@ class LinProgModel():
             env (CityLearnEnv): pre-constructred environment object to use
         """
 
-        if schema is not None and env is not None:
-            raise ValueError("Cannot provide both a schema and a CityLearnEnv object.")
+        self.envs = []
 
-        if schema is not None:
-            env = CityLearnEnv(schema)
-
-        self.envs = [env]
+        env = self.add_env(schema,env)
 
         self.b_names = [b.name for b in env.buildings]
         self.Tmax = env.time_steps # number of timesteps available
@@ -53,20 +53,26 @@ class LinProgModel():
             env (CityLearnEnv): pre-constructred environment object to use
         """
 
+        if schema is None and env is None:
+            raise ValueError("Must provide either a schema or a CityLearnEnv object.")
         if schema is not None and env is not None:
             raise ValueError("Cannot provide both a schema and a CityLearnEnv object.")
 
         if schema is not None:
             env = CityLearnEnv(schema)
 
-        assert [b.name for b in env.buildings] == [b.name for b in self.envs[0].buildings]
-        assert env.time_steps == self.envs[0].time_steps
-        assert env.seconds_per_time_step == self.envs[0].seconds_per_time_step
+        if len(self.envs) > 0:
+            assert [b.name for b in env.buildings] == [b.name for b in self.envs[0].buildings]
+            assert env.time_steps == self.envs[0].time_steps
+            assert env.seconds_per_time_step == self.envs[0].seconds_per_time_step
 
-        assert [b.electrical_storage.capacity for b in env.buildings] == [b.electrical_storage.capacity for b in self.envs[0].buildings]
-        assert [b.pv.nominal_power for b in env.buildings] == [b.pv.nominal_power for b in self.envs[0].buildings]
+            # NOTE: all schemas must have the same asset capacities
+            assert [b.electrical_storage.capacity for b in env.buildings] == [b.electrical_storage.capacity for b in self.envs[0].buildings]
+            assert [b.pv.nominal_power for b in env.buildings] == [b.pv.nominal_power for b in self.envs[0].buildings]
 
         self.envs.append(env)
+
+        return env
 
 
     def set_time_data_from_envs(self, tau: int = None, t_start: int = None,
@@ -89,8 +95,10 @@ class LinProgModel():
         else: self.t_start = t_start
 
         if not hasattr(self, 'tau'):
-            if not tau: self.tau = (self.Tmax - 1) - self.t_start
+            if tau is None: self.tau = (self.Tmax - 1) - self.t_start
             else: self.tau = tau
+        else:
+            if (tau is not None) and (tau != self.tau): raise ValueError(f"Arugment `tau`={tau} does not match `self.tau`={self.tau} already set.")
         if self.tau > (self.Tmax - 1) - self.t_start: raise ValueError("`tau` cannot be greater than remaining time instances, (Tmax - 1) - t_start.")
 
         # initialise battery state for period before t_start
@@ -114,7 +122,7 @@ class LinProgModel():
 
     def set_custom_time_data(self, elec_loads: np.array, solar_gens: np.array, prices: np.array,
         carbon_intensities: np.array, current_socs: np.array = None) -> None:
-        """Set custom time variant data for model.
+        """Set custom time variant data for each scenario to be used in model.
 
         This is used to load in forecast/prediction data in the LP model of the system for Linear MPC.
 
@@ -129,7 +137,7 @@ class LinProgModel():
             prices (np.array): grid electricity price in each period ($/kWh) - shape (M,tau)
             carbon_intensities (np.array): grid electricity carbon intensity in each period (kgCO2/kWh) - shape (M,tau)
             current_socs (np.array, optional): initial states of charge of batteries in
-                period before t_start (kWh). Defaults to None.
+                period before t_start (kWh) - shape (M,N). Defaults to None.
         """
 
         if not hasattr(self,'buildings'): raise NameError("Battery data must be contructed before providing time data.")
@@ -142,7 +150,7 @@ class LinProgModel():
             "Data provided must have consistent time duration."
 
         if not hasattr(self,'tau'):
-            self.tau = elec_loads.shape[1]
+            self.tau = elec_loads.shape[2]
             assert self.tau > 0, "Must provide at least one period of data"
         else:
             assert elec_loads.shape[2] == self.tau, "Predicted time series must have length equal to specified planning horizon, tau."
@@ -166,7 +174,7 @@ class LinProgModel():
                     design: bool = False,
                     scenario_weightings: List[float] = None
                     ) -> None:
-        """Set up CVXPY LP of CityLearn model with data specified by schema, for
+        """Set up CVXPY LP of CityLearn model with data specified by stored `env`s, for
         desired buildings over specified time period.
 
         Note: we need to be extremely careful about the time indexing of the different variables (decision and data),
@@ -174,18 +182,19 @@ class LinProgModel():
 
         Args:
             clip_level (Str, optional): str, either 'd' (district) or 'b' (building), indicating
-            the level at which to clip cost values in the objective function
+                the level at which to clip cost values in the objective function.
             pricing_dict (Dict[str,float], optional): dictionary containing pricing info for LP. Prices
-            of carbon ($/kgCO2), solar capacity ($/kWp), battery capacity ($/kWh).
+                of carbon ($/kgCO2), battery capacity ($/kWh), solar capacity ($/kWp).
             opex_factor (float, optional): operational lifetime to consider OPEX costs over as factor
-            of time duration considered in LP.
+                of time duration considered in LP.
             design (Bool, optional): whether to construct the LP as a design problem - i.e. include
+                asset capacities as decision variables
             scenario_weightings (List[float], optional): list of scenario OPEX weightings for objective
         """
 
         if not hasattr(self,'tau'): raise NameError("Planning horizon must be set before LP can be generated.")
 
-        assert clip_level in ['d','b'], "`clip_level` value must be either 'd' (district) or 'b' (building)."
+        assert clip_level in ['d','b'], f"`clip_level` value must be either 'd' (district) or 'b' (building), {clip_level} provided."
 
         assert all([type(val) == float for val in pricing_dict.values()])
         self.pricing_dict = pricing_dict
@@ -194,7 +203,7 @@ class LinProgModel():
         self.design = design
 
         self.M = len(self.envs) # number of scenarios for optimisation
-        self.N = len(self.envs[0].buildings)
+        self.N = len(self.envs[0].buildings) # number of buildings in model
         assert self.N > 0
 
         if scenario_weightings is not None:
@@ -210,7 +219,7 @@ class LinProgModel():
         # action) equal for all scenarios - mutli-stage stochastic LP
 
         if clip_level == 'd':
-            self.xi = {m: cp.Variable(shape=(self.tau), nonneg=True) for m in range(self.M)}
+            self.xi = {m: cp.Variable(shape=(self.tau), nonneg=True) for m in range(self.M)} # net power flow slack variable
         elif clip_level == 'b':
             self.bxi = {m: cp.Variable(shape=(self.N,self.tau), nonneg=True) for m in range(self.M)} # building level xi
 
@@ -228,13 +237,12 @@ class LinProgModel():
             for b in env.buildings] for env in self.envs])
         self.battery_max_powers = np.array([[b.electrical_storage.available_nominal_power\
             for b in env.buildings] for env in self.envs])
-        
         # TODO: add battery loss coefficient dynamics (self-discharge) to LP model
 
-        # override asset capacities for design task
+        # setup asset capacities & generation time series for design task
         if self.design:
             self.battery_capacities = cp.Variable(shape=(self.N), nonneg=True)
-            self.rel_solar_capacities = cp.Variable(shape=(self.N), nonneg=True)
+            self.rel_solar_capacities = cp.Variable(shape=(self.N), nonneg=True) # solar panel capacities as fraction of those specified in schemas
             self.solar_gens_vals = {m: cp.multiply(cp.vstack([self.rel_solar_capacities]*self.tau).T,self.solar_gens_param[m]) for m in range(self.M)}
             # self.solar_gens_vals = {m: cp.vstack([self.solar_gens_param[m][n,:]*self.rel_solar_capacities[n] for n in range(self.N)]) for m in range(self.M)}
             # NOTE: the mode shape for solar generation assumed depends on the solar capacity specified
@@ -242,7 +250,7 @@ class LinProgModel():
         else:
             self.battery_capacities = np.array([b.electrical_storage.capacity\
                 for b in self.envs[0].buildings])
-            # NOTE: batttery capacities must be common to all scenarios
+            # NOTE: batttery & solar capacities must be common to all scenarios
             self.solar_gens_vals = self.solar_gens_param
 
 
@@ -278,17 +286,12 @@ class LinProgModel():
 
             # storage energy constraints - for t \in [t+1,t+tau]
             self.constraints += [self.SoC[m] <= cp.vstack([self.battery_capacities]*self.tau).T]
-            # for n in range(self.N):
-            #     self.constraints += [self.SoC[m][n,:] <= self.battery_capacities[n]]
-
-
-            # compute grid flows
-            self.e_grids += [cp.sum(self.elec_loads_param[m] - self.solar_gens_vals[m] +\
-                self.battery_inflows[m], axis=0)] # for [t+1,t+tau]
+            # for n in range(self.N): self.constraints += [self.SoC[m][n,:] <= self.battery_capacities[n]]
 
             if clip_level == 'd':
                 # aggregate costs at district level (CityLearn <= 1.6 objective)
-                # costs are computed from clipped e_grids value - i.e. looking at portfolio elec. cost
+                # costs are computed from clipped e_grids (net grid power flow) value - i.e. looking at portfolio elec. cost
+                self.e_grids += [cp.sum(self.elec_loads_param[m] - self.solar_gens_vals[m] + self.battery_inflows[m], axis=0)] # for [t+1,t+tau]
                 self.constraints += [self.xi[m] >= self.e_grids[m]] # for t \in [t+1,t+tau]
 
                 self.scenario_objective_contributions.append([(self.xi[m] @ self.prices_param[m]),\
@@ -296,18 +299,18 @@ class LinProgModel():
 
             elif clip_level == 'b':
                 # aggregate costs at building level and average (CityLearn >= 1.7 objective)
-                # costs are computed from clipped building power flow values - i.e. looking at mean building elec. cost
-                self.building_power_flows += [self.elec_loads_param[m] - self.solar_gens_vals[m] + self.battery_inflows[m]]
+                # costs are computed from clipped building net power flow values - i.e. looking at mean building elec. cost
+                self.building_power_flows += [self.elec_loads_param[m] - self.solar_gens_vals[m] + self.battery_inflows[m]] # for [t+1,t+tau]
                 self.constraints += [self.bxi[m] >= self.building_power_flows[m]] # for t \in [t+1,t+tau]
 
-            self.scenario_objective_contributions.append([(cp.sum(self.bxi[m], axis=0) @ self.prices_param[m]),\
-                (cp.sum(self.bxi[m], axis=0) @ self.carbon_intensities_param[m]) * self.pricing_dict['carbon']])
+                self.scenario_objective_contributions.append([(cp.sum(self.bxi[m], axis=0) @ self.prices_param[m]),\
+                    (cp.sum(self.bxi[m], axis=0) @ self.carbon_intensities_param[m]) * self.pricing_dict['carbon']])
 
         # define overall objective
         self.objective_contributions = []
 
-        self.objective_contributions += [scenario_weightings @ np.array([t[0] for t in self.scenario_objective_contributions])] # total electricity price
-        self.objective_contributions += [scenario_weightings @ np.array([t[1] for t in self.scenario_objective_contributions])] # total carbon cost
+        self.objective_contributions += [scenario_weightings @ np.array([t[0] for t in self.scenario_objective_contributions])] # mean electricity price
+        self.objective_contributions += [scenario_weightings @ np.array([t[1] for t in self.scenario_objective_contributions])] # mean carbon cost
 
         if self.design:
             self.objective_contributions = [contr*opex_factor for contr in self.objective_contributions] # extend opex costs to design lifetime
