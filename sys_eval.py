@@ -108,7 +108,7 @@ def evaluate_system(
                                             * lp.pricing_dict['carbon']]
     if design:
         objective_contributions = [contr*opex_factor for contr in objective_contributions] # extend opex costs to design lifetime
-        objective_contributions += [np.sum([b.electrical_storage.capacity for b in env.buildings]) * lp.pricing_dict['battery']]
+        objective_contributions += [np.sum([b.electrical_storage.capacity_history[0] for b in env.buildings]) * lp.pricing_dict['battery']]
         objective_contributions += [np.sum([b.pv.nominal_power for b in env.buildings]) * lp.pricing_dict['solar']]
 
     return {'objective': np.sum(objective_contributions), 'objective_contrs': objective_contributions}

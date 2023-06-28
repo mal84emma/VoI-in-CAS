@@ -67,7 +67,7 @@ class LinProgModel():
             assert env.seconds_per_time_step == self.envs[0].seconds_per_time_step
 
             # NOTE: all schemas must have the same asset capacities
-            assert [b.electrical_storage.capacity for b in env.buildings] == [b.electrical_storage.capacity for b in self.envs[0].buildings]
+            assert [b.electrical_storage.capacity_history[0] for b in env.buildings] == [b.electrical_storage.capacity_history[0] for b in self.envs[0].buildings]
             assert [b.pv.nominal_power for b in env.buildings] == [b.pv.nominal_power for b in self.envs[0].buildings]
 
         self.envs.append(env)
@@ -248,7 +248,7 @@ class LinProgModel():
             # NOTE: the mode shape for solar generation assumed depends on the solar capacity specified
             # in the schema due to the non-linearities of the panel model in CityLearn
         else:
-            self.battery_capacities = np.array([b.electrical_storage.capacity\
+            self.battery_capacities = np.array([b.electrical_storage.capacity_history[0]\
                 for b in self.envs[0].buildings])
             # NOTE: batttery & solar capacities must be common to all scenarios
             self.solar_gens_vals = self.solar_gens_param
