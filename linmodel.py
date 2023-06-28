@@ -243,8 +243,8 @@ class LinProgModel():
         if self.design:
             self.battery_capacities = cp.Variable(shape=(self.N), nonneg=True)
             self.rel_solar_capacities = cp.Variable(shape=(self.N), nonneg=True) # solar panel capacities as fraction of those specified in schemas
-            self.solar_gens_vals = {m: cp.multiply(cp.vstack([self.rel_solar_capacities]*self.tau).T,self.solar_gens_param[m]) for m in range(self.M)}
-            # self.solar_gens_vals = {m: cp.vstack([self.solar_gens_param[m][n,:]*self.rel_solar_capacities[n] for n in range(self.N)]) for m in range(self.M)}
+            #self.solar_gens_vals = {m: cp.multiply(cp.vstack([self.rel_solar_capacities]*self.tau).T,self.solar_gens_param[m]) for m in range(self.M)}
+            self.solar_gens_vals = {m: cp.vstack([self.solar_gens_param[m][n,:]*self.rel_solar_capacities[n] for n in range(self.N)]) for m in range(self.M)}
             # NOTE: the mode shape for solar generation assumed depends on the solar capacity specified
             # in the schema due to the non-linearities of the panel model in CityLearn
         else:
@@ -285,8 +285,9 @@ class LinProgModel():
                 np.tile(self.battery_max_powers[m].reshape((self.N,1)),self.tau)*self.delta_t]
 
             # storage energy constraints - for t \in [t+1,t+tau]
-            self.constraints += [self.SoC[m] <= cp.vstack([self.battery_capacities]*self.tau).T]
-            # for n in range(self.N): self.constraints += [self.SoC[m][n,:] <= self.battery_capacities[n]]
+            #self.constraints += [self.SoC[m] <= cp.vstack([self.battery_capacities]*self.tau).T]
+            # NOTE: oddly for cvxpy the below is more vectorized and gives better compile times
+            for n in range(self.N): self.constraints += [self.SoC[m][n,:] <= self.battery_capacities[n]]
 
             if clip_level == 'd':
                 # aggregate costs at district level (CityLearn <= 1.6 objective)
@@ -368,6 +369,7 @@ class LinProgModel():
 
         if 'solver' not in kwargs: kwargs['solver'] = 'SCIPY'
         if 'verbose' not in kwargs: kwargs['verbose'] = False
+        if 'ignore_dpp' not in kwargs: kwargs['ignore_dpp'] = True
         if kwargs['solver'] == 'SCIPY': kwargs['scipy_options'] = {'method':'highs'}
         if kwargs['verbose'] == True: kwargs['scipy_options'].update({'disp':True})
 
