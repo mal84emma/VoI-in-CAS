@@ -54,7 +54,7 @@ if __name__ == '__main__':
                 lp_start = time.perf_counter()
                 lp.set_time_data_from_envs(t_start=num_steps, tau=tau, current_socs=current_socs) # load ground truth data
                 lp.set_LP_parameters()
-                results = lp.solve_LP()
+                results = lp.solve_LP(ignore_dpp=False)
                 actions: np.array = results['battery_inflows'][0][:,0].reshape((lp.N,1))/lp.battery_capacities
                 lp_solver_time_elapsed += time.perf_counter() - lp_start
 
