@@ -91,6 +91,10 @@ if __name__ == '__main__':
 
     # Evaluate true cost of LP designed system with real controller.
     # ============================================================================
+    base_kwargs.update({
+        'battery_energy_capacities': lp_results['battery_capacities'],
+        'pv_power_capacities': lp_results['solar_capacities']
+    })
 
     eval_results = evaluate_system(schema_path,pricing_dict,opex_factor)
 
