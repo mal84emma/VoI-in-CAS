@@ -39,7 +39,7 @@ if __name__ == '__main__':
         'schema_name': 'schema_temp'
     }
 
-    # Setup initial guess.
+    # Setup initial guess - from Annex 37.
     current_battery_capacities = [3127.0,2736.0,2746.0,2448.0,4788.0,4565.0]
     current_solar_capacities = [178.0,41.0,57.0,120.0,1349.0,257.0]
 
