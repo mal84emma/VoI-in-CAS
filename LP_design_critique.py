@@ -30,7 +30,7 @@ if __name__ == '__main__':
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
         'battery_power_capacities': [391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
-        'battery_efficiencies': [0.90]*len(ids), # from Annex 37
+        'battery_efficiencies': [0.85]*len(ids), # 0.9 for Annex 37
         'pv_power_capacities': None,
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
         'weather_data_path': 'weather.csv',
