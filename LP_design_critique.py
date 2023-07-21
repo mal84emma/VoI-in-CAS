@@ -76,6 +76,7 @@ if __name__ == '__main__':
         'battery_energy_capacities': lp_results['battery_capacities'],
         'pv_power_capacities': lp_results['solar_capacities']
     })
+    schema_path = build_schema(**base_kwargs)
 
     eval_results = evaluate_system(schema_path,pricing_dict,opex_factor)
 
