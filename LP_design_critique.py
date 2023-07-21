@@ -27,7 +27,7 @@ if __name__ == '__main__':
     ids = [11]
 
     base_kwargs = {
-        'output_dir_path': os.path.join('data','A37_example_validate'),
+        'output_dir_path': os.path.join('data','A37_example_test'),
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
         'battery_power_capacities': [342.0], #[391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
