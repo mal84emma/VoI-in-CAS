@@ -84,6 +84,7 @@ def build_schema(
                 'autosize': False,
                 'attributes': {
                         'capacity': battery_energy_capacities[i],
+                        'efficiency': battery_efficiencies[i],
                         'nominal_power': battery_power_capacities[i],
                         'capacity_loss_coefficient': 1e-05,
                         'loss_coefficient': 0,
