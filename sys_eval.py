@@ -20,7 +20,8 @@ def evaluate_system(
         opex_factor: float,
         clip_level: str = 'b',
         design: bool = True,
-        tau: int = 48
+        tau: int = 48,
+        suppress_output = False
     ) -> Dict[str,Any]:
     """Evaluate performance of system defined by schema with given
     costs and control characteristics.
@@ -37,6 +38,8 @@ def evaluate_system(
         design (bool, optional): Whether to include asset costs & use extended
             OPEX in reported costs. Defaults to True.
         tau (int, optional): Planning horizon for controller. Defaults to 48.
+        suppress_output (bool, optional): Wether to disable outputs to
+            terminal. Defaults to False
 
     Returns:
         Dict[str,Any]: Dictionary of system cost (objective) & breakdown.
@@ -61,7 +64,7 @@ def evaluate_system(
     current_socs = np.array([[charge*capacity for charge,capacity in zip(np.array(observations)[:,soc_obs_index],lp.battery_capacities)]]) # get initial SoCs
 
     # Execute control loop.
-    with tqdm(total=env.time_steps) as pbar:
+    with tqdm(total=env.time_steps, disable=suppress_output) as pbar:
 
         while not done:
             if num_steps%100 == 0:
@@ -91,7 +94,7 @@ def evaluate_system(
 
             num_steps += 1
 
-    print("Evaluation complete.")
+    if not suppress_output: print("Evaluation complete.")
 
     # Calculate objective fn performance.
     objective_contributions = []
