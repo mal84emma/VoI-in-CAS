@@ -19,7 +19,7 @@ def cost_MC_estimate(x, ids, n_samples):
     opex_factor = 10
     pricing_dict = {'carbon':5e-1,'battery':1e3,'solar':2e3}
     base_kwargs = {
-        'output_dir_path': os.path.join('data','A37_example_validate'),
+        'output_dir_path': os.path.join('data','A37_example_test'),
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
         'battery_power_capacities': [391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37

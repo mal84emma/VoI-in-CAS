@@ -13,7 +13,7 @@ from sys_eval import evaluate_system
 if __name__ == '__main__':
 
     # Set up evaluation params.
-    dataset_dir = os.path.join('A37_example_validate') # dataset directory
+    dataset_dir = os.path.join('A37_example_test') # dataset directory
     schema_path = os.path.join('data', dataset_dir, 'schema_temp.json')
     opex_factor = 10
     pricing_dict = {'carbon':5e-1,'battery':1e3,'solar':2e3}

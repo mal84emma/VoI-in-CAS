@@ -117,7 +117,7 @@ def evaluate_system(
 if __name__ == '__main__':
 
     # Define test dataset.
-    dataset_dir = os.path.join('A37_example_validate') # dataset directory
+    dataset_dir = os.path.join('A37_example_test') # dataset directory
     schema_path = os.path.join('data', dataset_dir, 'schema.json')
 
     # Define cost parameters.

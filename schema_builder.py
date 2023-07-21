@@ -114,7 +114,7 @@ if __name__ == '__main__':
     ids = [5,11,14]
 
     base_kwargs = {
-        'output_dir_path': os.path.join('data','A37_example_validate'),
+        'output_dir_path': os.path.join('data','A37_example_test'),
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': [2000,1500,1500],
         'battery_power_capacities': [300,250,250],

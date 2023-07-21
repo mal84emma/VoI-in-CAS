@@ -11,7 +11,7 @@ from linmodel import LinProgModel
 
 if __name__ == '__main__':
 
-    dataset_dir = os.path.join('A37_example_validate') # dataset directory
+    dataset_dir = os.path.join('A37_example_test') # dataset directory
     schema_path = os.path.join('data', dataset_dir, 'schema.json')
     #tau = 24*7*52 # model prediction horizon (number of timesteps of data predicted)
     #opex_factor = (24*7*52*20)/tau
