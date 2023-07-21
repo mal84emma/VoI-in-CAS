@@ -1,4 +1,4 @@
-"""Design system using LP & quantify over-optimism."""
+"""Design system using stochastic LP & quantify over-optimism."""
 
 import os
 import csv
@@ -10,6 +10,8 @@ from linmodel import LinProgModel
 from schema_builder import build_schema
 from sys_eval import evaluate_system
 
+
+
 if __name__ == '__main__':
 
     # Set up evaluation params.
@@ -18,8 +20,7 @@ if __name__ == '__main__':
     opex_factor = 10
     pricing_dict = {'carbon':5e-1,'battery':1e3,'solar':2e3}
 
-
-    # Design system using LP model.
+    # Design system using LP scenario optimisation model.
     # ============================================================================
 
     # Set up base parameters of system.
@@ -31,7 +32,7 @@ if __name__ == '__main__':
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
         'battery_power_capacities': [342.0], #[391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
-        'battery_efficiencies': [0.85]*len(ids), # 0.9 for Annex 37
+        'battery_efficiencies': None,
         'pv_power_capacities': None,
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
         'weather_data_path': 'weather.csv',
@@ -50,19 +51,41 @@ if __name__ == '__main__':
         'battery_energy_capacities': current_battery_capacities,
         'pv_power_capacities': current_solar_capacities
     })
-    schema_path = build_schema(**base_kwargs)
 
-    # Initialise CityLearn environment object.
-    env = CityLearnEnv(schema=schema_path)
+    # Set up probabilistic model of effiencies and take draws.
+    n_draws = 100
+    mu = 0.85
+    sigma = 0.1
+    eta_samples = np.random.normal(loc=mu,scale=sigma,size=(n_draws,len(ids)))
+    eta_samples = np.clip(eta_samples,0,1)
 
-    # Initialise Linear MPC object.
-    lp = LinProgModel(env=env)
+    # Set up scenario optimisation object.
+    num_scenarios = 1
+
+    envs = []
+
+    for m in range(num_scenarios):
+
+        # Build schema.
+        base_kwargs.update({
+                'battery_efficiencies': eta_samples[m]
+            })
+        schema_path = build_schema(**base_kwargs)
+
+        # Initialise CityLearn environment object.
+        envs.append(CityLearnEnv(schema=schema_path))
+
+        if m == 0: # initialise lp object
+            lp = LinProgModel(env=envs[m])
+        else:
+            lp.add_env(env=envs[m])
+
     lp.set_time_data_from_envs()
     lp.generate_LP(clip_level='b',design=True,pricing_dict=pricing_dict,opex_factor=opex_factor)
     lp.set_LP_parameters()
     lp_results = lp.solve_LP(verbose=True,ignore_dpp=True)
 
-    print('\nLP Design Complete.')
+    print('\nLP Stochastic Design Complete.')
     print('===================')
     print(lp_results['objective'])
     print(lp_results['objective_contrs'])
@@ -70,28 +93,39 @@ if __name__ == '__main__':
     print(lp_results['solar_capacities'])
     print('\n')
 
-    # Evaluate true cost of LP designed system with real controller.
-    # ============================================================================
-    base_kwargs.update({
+    base_kwargs.update({ # set system to best scenario optimised design (latest)
         'battery_energy_capacities': lp_results['battery_capacities'],
         'pv_power_capacities': lp_results['solar_capacities']
     })
-    schema_path = build_schema(**base_kwargs)
 
-    eval_results = evaluate_system(schema_path,pricing_dict,opex_factor)
 
-    print('\nTrue system performance.')
-    print('========================')
-    print(eval_results['objective'])
-    print(eval_results['objective_contrs'])
-
-    # Report LP over-optimism.
+    # Compute MC estimate of true system cost for design
     # ============================================================================
-    print('\nLP Over-Optimism.')
+    n_samples = 25
+    cost_evals = []
+
+    for j in range(n_samples):
+        print("Sample evalation: %s"%j)
+
+        etas = eta_samples[j]
+
+        # Build schema.
+        base_kwargs.update({
+                'battery_efficiencies': etas
+            })
+        schema_path = build_schema(**base_kwargs)
+
+        eval_results = evaluate_system(schema_path,pricing_dict,opex_factor)
+
+        cost_evals.append(eval_results['objective'])
+
+
+    # Report stochastic LP over-optimism.
+    # ============================================================================
+    print('\nStochastic LP Over-Optimism.')
     print('=================')
-    print(f"{round((np.abs(eval_results['objective']-lp_results['objective'])/eval_results['objective'])*100,2)}%")
+    print(f"{round((np.abs(np.mean(cost_evals)-lp_results['objective'])/np.mean(cost_evals))*100,2)}%")
 
 
-    # TODO: Repeat analysis using real predictor - e.g. Pat's linear networks
+    # Repeat analysis using real controller?
     # ============================================================================
-
