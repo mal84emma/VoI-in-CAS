@@ -23,13 +23,14 @@ if __name__ == '__main__':
     # ============================================================================
 
     # Set up base parameters of system.
-    ids = [5,11,14,16,24,29]
+    #ids = [5,11,14,16,24,29]
+    ids = [11]
 
     base_kwargs = {
         'output_dir_path': os.path.join('data','A37_example_validate'),
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
-        'battery_power_capacities': [391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
+        'battery_power_capacities': [342.0], #[391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
         'battery_efficiencies': [0.85]*len(ids), # 0.9 for Annex 37
         'pv_power_capacities': None,
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
@@ -40,46 +41,26 @@ if __name__ == '__main__':
     }
 
     # Setup initial guess - from Annex 37.
-    current_battery_capacities = [3127.0,2736.0,2746.0,2448.0,4788.0,4565.0]
-    current_solar_capacities = [178.0,41.0,57.0,120.0,1349.0,257.0]
+    #current_battery_capacities = [3127.0,2736.0,2746.0,2448.0,4788.0,4565.0]
+    current_battery_capacities = [2736.0]
+    #current_solar_capacities = [178.0,41.0,57.0,120.0,1349.0,257.0]
+    current_solar_capacities = [41.0]
 
-    nits = 0
-    max_its = 10
+    base_kwargs.update({
+        'battery_energy_capacities': current_battery_capacities,
+        'pv_power_capacities': current_solar_capacities
+    })
+    schema_path = build_schema(**base_kwargs)
 
-    # Iterate LP solution to overcome solar mode shape assumption.
-    # (this is not a huge issue it turns out, non-linearities are only for small capacities)
-    while nits < max_its:
-        print(f"\nSolution attempt {nits}.")
+    # Initialise CityLearn environment object.
+    env = CityLearnEnv(schema=schema_path)
 
-        base_kwargs.update({
-            'battery_energy_capacities': current_battery_capacities,
-            'pv_power_capacities': current_solar_capacities
-        })
-        schema_path = build_schema(**base_kwargs)
-
-        # Initialise CityLearn environment object.
-        env = CityLearnEnv(schema=schema_path)
-
-        # Initialise Linear MPC object.
-        lp = LinProgModel(env=env)
-        lp.set_time_data_from_envs()
-        lp.generate_LP(clip_level='b',design=True,pricing_dict=pricing_dict,opex_factor=opex_factor)
-        lp.set_LP_parameters()
-        lp_results = lp.solve_LP(verbose=True,ignore_dpp=True)
-
-        print(lp_results['objective'])
-        print(lp_results['objective_contrs'])
-        print(lp_results['battery_capacities'])
-        print(lp_results['solar_capacities'])
-
-        if (np.all(np.abs(lp_results['battery_capacities'] - current_battery_capacities) < 0.1)) &\
-            (np.all(np.abs(lp_results['solar_capacities'] - current_solar_capacities) < 0.1)):
-            break
-        else:
-            current_battery_capacities = lp_results['battery_capacities']
-            current_solar_capacities = lp_results['solar_capacities']
-
-        nits += 1
+    # Initialise Linear MPC object.
+    lp = LinProgModel(env=env)
+    lp.set_time_data_from_envs()
+    lp.generate_LP(clip_level='b',design=True,pricing_dict=pricing_dict,opex_factor=opex_factor)
+    lp.set_LP_parameters()
+    lp_results = lp.solve_LP(verbose=True,ignore_dpp=True)
 
     print('\nLP Design Complete.')
     print('===================')
