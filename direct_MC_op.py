@@ -22,7 +22,7 @@ def cost_MC_estimate(x, ids, n_samples):
         'output_dir_path': os.path.join('data','A37_example_test'),
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
-        'battery_power_capacities': [391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
+        'battery_power_capacities': [342.0], # [391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
         'battery_efficiencies': None,
         'pv_power_capacities': None,
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
@@ -44,7 +44,7 @@ def cost_MC_estimate(x, ids, n_samples):
         mu = 0.85
         sigma = 0.1
         eta_samples = np.random.normal(loc=mu,scale=sigma,size=(len(ids)))
-        eta_samples.clip(0,1)
+        eta_samples = np.clip(eta_samples,0,1)
 
         # Construct schema with specified decision varaibles and samples parameters
         # ========================================================================
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     ids = [11]
     n_samples = 1
     lower_bounds = np.array([*[1e2]*len(ids),*[1e2]*len(ids)])
-    upper_bounds = np.array([*[5e3]*len(ids),*[5e3]*len(ids)])
+    upper_bounds = np.array([*[2.5e3]*len(ids),*[2.5e3]*len(ids)])
     bounds = op.Bounds(lb=lower_bounds,ub=upper_bounds)
     #results = op.dual_annealing(cost_MC_estimate, bounds, args=(ids,n_samples), seed=seed)
     start = time.time()
