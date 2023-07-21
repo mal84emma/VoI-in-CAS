@@ -70,8 +70,9 @@ if __name__ == '__main__':
     seed = 42
     ids = [11]
     n_samples = 1
-    upper_bounds = np.array([*[5e4]*len(ids),*[5e3]*len(ids)])
-    bounds = op.Bounds(lb=np.ones(len(ids)*2),ub=upper_bounds)
+    lower_bounds = np.array([*[1e2]*len(ids),*[1e2]*len(ids)])
+    upper_bounds = np.array([*[5e3]*len(ids),*[5e3]*len(ids)])
+    bounds = op.Bounds(lb=lower_bounds,ub=upper_bounds)
     #results = op.dual_annealing(cost_MC_estimate, bounds, args=(ids,n_samples), seed=seed)
     start = time.time()
     results = op.differential_evolution(cost_MC_estimate, bounds, args=(ids,n_samples), seed=seed)
