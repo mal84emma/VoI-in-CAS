@@ -8,6 +8,8 @@ from multiprocessing import Pool
 def parallel_task(func, iterable, n_procs=os.cpu_count()):
     """Schedule multiprocessing of function evaluations.
 
+    Adapted from solution to https://stackoverflow.com/questions/47313732/jupyter-notebook-never-finishes-processing-using-multiprocessing-python-3/47374811
+
     NOTE: this function must be in a notebook for ipynb multipproc
     NOTE: in this workaround, the function passed to `parallel_task`
     must do all of the importing it needs, and unwrap the arguments
