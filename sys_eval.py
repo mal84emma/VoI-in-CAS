@@ -15,7 +15,11 @@ from schema_builder import build_schema
 
 
 
-def construct_and_evaluate_system(battery_capacities,solar_capacities,battery_efficiencies,base_kwargs,pricing_dict,opex_factor,mproc_id=None):
+def construct_and_evaluate_system(
+        battery_capacities,solar_capacities,battery_efficiencies,
+        base_kwargs,pricing_dict,opex_factor,
+        mproc_id=None, return_contrs=False, suppress_output=True
+    ):
     """Wrapper function for constructing & evaluating system for given parameter values."""
 
     if mproc_id is not None:
@@ -30,9 +34,13 @@ def construct_and_evaluate_system(battery_capacities,solar_capacities,battery_ef
         })
     schema_path = build_schema(**base_kwargs)
 
-    eval_results = evaluate_system(schema_path,pricing_dict,opex_factor,suppress_output=True)
+    eval_results = evaluate_system(schema_path,pricing_dict,opex_factor,suppress_output=suppress_output)
 
-    if mproc_id is not None: os.remove(schema_path)
+    if os.path.normpath(schema_path).split(os.path.sep)[-1] != 'schema.json':
+        os.remove(schema_path)
+
+    if return_contrs:
+        return eval_results
 
     return eval_results['objective']
 
