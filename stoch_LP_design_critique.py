@@ -8,15 +8,15 @@ import numpy as np
 from citylearn.citylearn import CityLearnEnv
 from linmodel import LinProgModel
 from schema_builder import build_schema
-from sys_eval import evaluate_system
+from sys_eval import construct_and_evaluate_system
+from mproc_utils import parallel_task, multi_proc_constr_and_eval_system
 
 
 
 if __name__ == '__main__':
 
     # Set up evaluation params.
-    dataset_dir = os.path.join('A37_example_test') # dataset directory
-    schema_path = os.path.join('data', dataset_dir, 'schema_temp.json')
+    dataset_dir = os.path.join('data','A37_example_test') # dataset directory
     opex_factor = 10
     pricing_dict = {'carbon':5e-1,'battery':1e3,'solar':2e3}
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     ids = [11]
 
     base_kwargs = {
-        'output_dir_path': os.path.join('data','A37_example_test'),
+        'output_dir_path': dataset_dir,
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
         'battery_power_capacities': [342.0], #[391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     eta_samples = np.clip(eta_samples,0,1)
 
     # Set up scenario optimisation object.
-    num_scenarios = 1
+    num_scenarios = 3
 
     envs = []
 
@@ -93,31 +93,14 @@ if __name__ == '__main__':
     print(lp_results['solar_capacities'])
     print('\n')
 
-    base_kwargs.update({ # set system to best scenario optimised design (latest)
-        'battery_energy_capacities': lp_results['battery_capacities'],
-        'pv_power_capacities': lp_results['solar_capacities']
-    })
-
 
     # Compute MC estimate of true system cost for design
     # ============================================================================
-    n_samples = 25
-    cost_evals = []
+    n_samples = 100
+    n_processes = 24
 
-    for j in range(n_samples):
-        print("Sample evalation: %s"%j)
-
-        etas = eta_samples[j]
-
-        # Build schema.
-        base_kwargs.update({
-                'battery_efficiencies': etas
-            })
-        schema_path = build_schema(**base_kwargs)
-
-        eval_results = evaluate_system(schema_path,pricing_dict,opex_factor)
-
-        cost_evals.append(eval_results['objective'])
+    mproc_args_list = [[lp_results['battery_capacities'],lp_results['solar_capacities'],eta_samples[n],base_kwargs,pricing_dict,opex_factor,n] for n in range(n_samples)]
+    cost_evals = parallel_task(multi_proc_constr_and_eval_system, mproc_args_list, n_procs=n_processes)
 
 
     # Report stochastic LP over-optimism.

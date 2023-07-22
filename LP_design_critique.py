@@ -8,13 +8,12 @@ import numpy as np
 from citylearn.citylearn import CityLearnEnv
 from linmodel import LinProgModel
 from schema_builder import build_schema
-from sys_eval import evaluate_system
+from sys_eval import construct_and_evaluate_system
 
 if __name__ == '__main__':
 
     # Set up evaluation params.
-    dataset_dir = os.path.join('A37_example_test') # dataset directory
-    schema_path = os.path.join('data', dataset_dir, 'schema_temp.json')
+    dataset_dir = os.path.join('data','A37_example_test') # dataset directory
     opex_factor = 10
     pricing_dict = {'carbon':5e-1,'battery':1e3,'solar':2e3}
 
@@ -26,12 +25,14 @@ if __name__ == '__main__':
     #ids = [5,11,14,16,24,29]
     ids = [11]
 
+    battery_efficiencies = [0.85]*len(ids) # 0.9 for Annex 37
+
     base_kwargs = {
-        'output_dir_path': os.path.join('data','A37_example_test'),
+        'output_dir_path': dataset_dir,
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
         'battery_power_capacities': [342.0], #[391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
-        'battery_efficiencies': [0.85]*len(ids), # 0.9 for Annex 37
+        'battery_efficiencies': battery_efficiencies,
         'pv_power_capacities': None,
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
         'weather_data_path': 'weather.csv',
@@ -72,13 +73,11 @@ if __name__ == '__main__':
 
     # Evaluate true cost of LP designed system with real controller.
     # ============================================================================
-    base_kwargs.update({
-        'battery_energy_capacities': lp_results['battery_capacities'],
-        'pv_power_capacities': lp_results['solar_capacities']
-    })
-    schema_path = build_schema(**base_kwargs)
-
-    eval_results = evaluate_system(schema_path,pricing_dict,opex_factor)
+    eval_results = construct_and_evaluate_system(
+            lp_results['battery_capacities'], lp_results['solar_capacities'], battery_efficiencies,
+            base_kwargs, pricing_dict, opex_factor,
+            return_contrs=True, suppress_output=False
+        )
 
     print('\nTrue system performance.')
     print('========================')
@@ -89,7 +88,7 @@ if __name__ == '__main__':
     # ============================================================================
     print('\nLP Over-Optimism.')
     print('=================')
-    print(f"{round((np.abs(eval_results['objective']-lp_results['objective'])/eval_results['objective'])*100,2)}%")
+    print(f"{round(((eval_results['objective']-lp_results['objective'])/eval_results['objective'])*100,2)}%")
 
 
     # TODO: Repeat analysis using real predictor - e.g. Pat's linear networks
