@@ -98,3 +98,4 @@ if __name__ == '__main__':
 
     print(results.x, results.fun, results.message)
     print("Runtime: %s s" % round(end-start,1))
+    print("No. of fn evals: %s"%results.nfev)
