@@ -11,7 +11,30 @@ from typing import Any, List, Dict, Mapping, Tuple, Union
 
 from citylearn.citylearn import CityLearnEnv
 from linmodel import LinProgModel
+from schema_builder import build_schema
 
+
+
+def construct_and_evaluate_system(battery_capacities,solar_capacities,battery_efficiencies,base_kwargs,pricing_dict,opex_factor,mproc_id=None):
+    """Wrapper function for constructing & evaluating system for given parameter values."""
+
+    if mproc_id is not None:
+        base_kwargs.update({
+            'schema_name': 'mproc_schema_temp_%s'%mproc_id
+        })
+
+    base_kwargs.update({
+            'battery_energy_capacities': battery_capacities,
+            'battery_efficiencies': battery_efficiencies,
+            'pv_power_capacities': solar_capacities
+        })
+    schema_path = build_schema(**base_kwargs)
+
+    eval_results = evaluate_system(schema_path,pricing_dict,opex_factor,suppress_output=True)
+
+    if mproc_id is not None: os.remove(schema_path)
+
+    return eval_results['objective']
 
 
 def evaluate_system(
