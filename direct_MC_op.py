@@ -75,7 +75,7 @@ def cost_MC_estimate(x, ids, n_samples):
     eta_samples = np.clip(eta_samples,0,1)
 
     # Evaluate system cost for each parameter value in parallel.
-    n_processes = 24
+    n_processes = min(25,os.cpu_count()//2)
 
     mproc_args_list = [[battery_energy_capacities,pv_power_capacities,eta_samples[n],base_kwargs,pricing_dict,opex_factor,n] for n in range(n_samples)]
     costs = parallel_task(multi_proc_constr_and_eval_system, mproc_args_list, n_procs=n_processes)
@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     seed = 42
     ids = [11]
-    n_samples = 48
+    n_samples = 50
     lower_bounds = np.array([*[5e2]*len(ids),*[1e2]*len(ids)])
     upper_bounds = np.array([*[2e3]*len(ids),*[1.5e3]*len(ids)])
     bounds = op.Bounds(lb=lower_bounds,ub=upper_bounds)
@@ -99,3 +99,11 @@ if __name__ == '__main__':
     print(results.x, results.fun, results.message)
     print("Runtime: %s s" % round(end-start,1))
     print("No. of fn evals: %s"%results.nfev)
+
+# RESULTS
+# =======
+#
+# 23/7/23
+# [894.90959551 652.90553307] 4944989.411288872 Optimization terminated successfully.
+# Runtime: 52911.6 s
+# No. of fn evals: 261 @ 48 samples per MC estimate eval (24 processes mproc)
