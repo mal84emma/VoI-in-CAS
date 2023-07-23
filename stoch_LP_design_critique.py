@@ -97,7 +97,7 @@ if __name__ == '__main__':
     # Compute MC estimate of true system cost for design
     # ============================================================================
     n_samples = 100
-    n_processes = 24
+    n_processes = min(25,os.cpu_count()//2)
 
     mproc_args_list = [[lp_results['battery_capacities'],lp_results['solar_capacities'],eta_samples[n],base_kwargs,pricing_dict,opex_factor,n] for n in range(n_samples)]
     cost_evals = parallel_task(multi_proc_constr_and_eval_system, mproc_args_list, n_procs=n_processes)
