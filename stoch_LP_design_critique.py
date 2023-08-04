@@ -81,7 +81,7 @@ if __name__ == '__main__':
             lp.add_env(env=envs[m])
 
     lp.set_time_data_from_envs()
-    lp.generate_LP(clip_level='b',design=True,pricing_dict=pricing_dict,opex_factor=opex_factor)
+    lp.generate_LP(clip_level='m',design=True,pricing_dict=pricing_dict,opex_factor=opex_factor)
     lp.set_LP_parameters()
     lp_results = lp.solve_LP(verbose=True,ignore_dpp=True)
 

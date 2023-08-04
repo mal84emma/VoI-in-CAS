@@ -25,7 +25,7 @@ if __name__ == '__main__':
     #for i in range(2): lp.add_env(env=env)
     #lp.tau = tau
     lp.set_time_data_from_envs()
-    lp.generate_LP(clip_level='b',design=True,pricing_dict={'carbon':5e-1,'battery':1e3,'solar':2e3},opex_factor=opex_factor)
+    lp.generate_LP(clip_level='m',design=True,pricing_dict={'carbon':5e-1,'battery':1e3,'solar':2e3},opex_factor=opex_factor)
     lp.set_LP_parameters()
     results = lp.solve_LP(verbose=True,ignore_dpp=True)
 

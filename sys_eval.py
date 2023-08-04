@@ -49,7 +49,7 @@ def evaluate_system(
         schema_path: Union[str, Path],
         pricing_dict: Dict[str,float],
         opex_factor: float,
-        clip_level: str = 'b',
+        clip_level: str = 'm',
         design: bool = True,
         tau: int = 48,
         suppress_output = False
@@ -63,9 +63,9 @@ def evaluate_system(
             Keys [units]; 'carbon' [$/kgCO2], 'battery' [$/kWh], 'solar' [$/kWp]
         opex_factor (float): operational lifetime to consider OPEX costs over
             as factor of time duration considered of simulation.
-        clip_level (str, optional): str, either 'd' (district) or 'b' (building),
-            indicating the level at which to clip cost values in the objective
-            function. Defaults to 'b'.
+        clip_level (str, optional): str, either 'd' (district), 'b' (building),
+            or 'm' (mixed), indicating the level at which to clip cost values
+            in the objective function. Defaults to 'm'.
         design (bool, optional): Whether to include asset costs & use extended
             OPEX in reported costs. Defaults to True.
         tau (int, optional): Planning horizon for controller. Defaults to 48.
@@ -140,6 +140,12 @@ def evaluate_system(
         objective_contributions += [np.sum([np.clip(net_elec,0,None) @ env.buildings[0].carbon_intensity.carbon_intensity\
                                         for net_elec in [b.net_electricity_consumption for b in env.buildings]])\
                                             * lp.pricing_dict['carbon']]
+    elif clip_level == 'm':
+        objective_contributions += [np.sum([np.clip(net_elec,0,None) @ env.buildings[0].pricing.electricity_pricing\
+                                        for net_elec in [b.net_electricity_consumption for b in env.buildings]])]
+        objective_contributions += [np.clip(np.sum([b.net_electricity_consumption for b in env.buildings],axis=0),0,None)\
+                                    @ env.buildings[0].carbon_intensity.carbon_intensity * lp.pricing_dict['carbon']]
+
     if design:
         objective_contributions = [contr*opex_factor for contr in objective_contributions] # extend opex costs to design lifetime
         objective_contributions += [np.sum([b.electrical_storage.capacity_history[0] for b in env.buildings]) * lp.pricing_dict['battery']]

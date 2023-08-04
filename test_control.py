@@ -14,7 +14,7 @@ from linmodel import LinProgModel
 if __name__ == '__main__':
 
     tau = 48
-    clip_level = 'b'
+    clip_level = 'm'
     opex_factor = 10
     design = False
 
@@ -86,6 +86,12 @@ if __name__ == '__main__':
         objective_contributions += [np.sum([np.clip(net_elec,0,None) @ env.buildings[0].carbon_intensity.carbon_intensity\
                                         for net_elec in [b.net_electricity_consumption for b in env.buildings]])\
                                             * lp.pricing_dict['carbon']]
+    elif clip_level == 'm':
+        objective_contributions += [np.sum([np.clip(net_elec,0,None) @ env.buildings[0].pricing.electricity_pricing\
+                                        for net_elec in [b.net_electricity_consumption for b in env.buildings]])]
+        objective_contributions += [np.clip(np.sum([b.net_electricity_consumption for b in env.buildings],axis=0),0,None)\
+                                    @ env.buildings[0].carbon_intensity.carbon_intensity * lp.pricing_dict['carbon']]
+
     if design:
         objective_contributions = [contr*opex_factor for contr in objective_contributions] # extend opex costs to design lifetime
         objective_contributions += [np.sum([b.electrical_storage.capacity_history[0] for b in env.buildings]) * lp.pricing_dict['battery']]

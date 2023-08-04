@@ -168,7 +168,7 @@ class LinProgModel():
         self.carbon_intensities = carbon_intensities
 
 
-    def generate_LP(self, clip_level: str = 'b',
+    def generate_LP(self, clip_level: str = 'm',
                     pricing_dict: Dict[str,float] = {'carbon':5e-2,'battery':1e3,'solar':2e3},
                     opex_factor = 10.0,
                     design: bool = False,
@@ -181,8 +181,8 @@ class LinProgModel():
         see comments in implementation for details.
 
         Args:
-            clip_level (Str, optional): str, either 'd' (district) or 'b' (building), indicating
-                the level at which to clip cost values in the objective function.
+            clip_level (Str, optional): str, either 'd' (district), 'b' (building), or 'm' (mixed),
+                indicating the level at which to clip cost values in the objective function.
             pricing_dict (Dict[str,float], optional): dictionary containing pricing info for LP. Prices
                 of carbon ($/kgCO2), battery capacity ($/kWh), solar capacity ($/kWp).
             opex_factor (float, optional): operational lifetime to consider OPEX costs over as factor
@@ -194,7 +194,7 @@ class LinProgModel():
 
         if not hasattr(self,'tau'): raise NameError("Planning horizon must be set before LP can be generated.")
 
-        assert clip_level in ['d','b'], f"`clip_level` value must be either 'd' (district) or 'b' (building), {clip_level} provided."
+        assert clip_level in ['d','b','m'], f"`clip_level` value must be either 'd' (district), 'b' (building), or 'm' (mixed), {clip_level} provided."
 
         assert all([type(val) == float for val in pricing_dict.values()])
         self.pricing_dict = pricing_dict
@@ -221,6 +221,9 @@ class LinProgModel():
         if clip_level == 'd':
             self.xi = {m: cp.Variable(shape=(self.tau), nonneg=True) for m in range(self.M)} # net power flow slack variable
         elif clip_level == 'b':
+            self.bxi = {m: cp.Variable(shape=(self.N,self.tau), nonneg=True) for m in range(self.M)} # building level xi
+        elif clip_level == 'm':
+            self.xi = {m: cp.Variable(shape=(self.tau), nonneg=True) for m in range(self.M)} # net power flow slack variable
             self.bxi = {m: cp.Variable(shape=(self.N,self.tau), nonneg=True) for m in range(self.M)} # building level xi
 
         # initialise problem parameters
@@ -306,6 +309,18 @@ class LinProgModel():
 
                 self.scenario_objective_contributions.append([(cp.sum(self.bxi[m], axis=0) @ self.prices_param[m]),\
                     (cp.sum(self.bxi[m], axis=0) @ self.carbon_intensities_param[m]) * self.pricing_dict['carbon']])
+
+            elif clip_level == 'm':
+                # aggregate electricity costs at building level (inflow metering only), but carbon emissions
+                # costs at district level (estate level carbon reporting )
+                # i.e. carbon credit system but no inter-building energy trading
+                self.e_grids += [cp.sum(self.elec_loads_param[m] - self.solar_gens_vals[m] + self.battery_inflows[m], axis=0)] # for [t+1,t+tau]
+                self.constraints += [self.xi[m] >= self.e_grids[m]] # for t \in [t+1,t+tau]
+                self.building_power_flows += [self.elec_loads_param[m] - self.solar_gens_vals[m] + self.battery_inflows[m]] # for [t+1,t+tau]
+                self.constraints += [self.bxi[m] >= self.building_power_flows[m]] # for t \in [t+1,t+tau]
+
+                self.scenario_objective_contributions.append([(cp.sum(self.bxi[m], axis=0) @ self.prices_param[m]),\
+                    (self.xi[m] @ self.carbon_intensities_param[m]) * self.pricing_dict['carbon']])
 
         # define overall objective
         self.objective_contributions = []
