@@ -34,25 +34,16 @@ if __name__ == '__main__':
     base_kwargs = {
         'output_dir_path': dataset_dir,
         'building_names': ['UCam_Building_%s'%id for id in ids],
-        'battery_energy_capacities': None,
+        'battery_energy_capacities': [annex_defaults["building_attributes"]["battery_energy_capacities (kWh)"][str(id)] for id in ids],
         'battery_power_capacities': [annex_defaults["building_attributes"]["battery_power_capacities (kW)"][str(id)] for id in ids],
         'battery_efficiencies': None,
-        'pv_power_capacities': None,
+        'pv_power_capacities': [annex_defaults["building_attributes"]["pv_power_capacities (kW)"][str(id)] for id in ids],
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
         'weather_data_path': 'weather.csv',
         'carbon_intensity_data_path': 'carbon_intensity.csv',
         'pricing_data_path': 'pricing.csv',
         'schema_name': 'schema_temp'
     }
-
-    # Setup initial guess - from Annex 37.
-    current_battery_capacities = [annex_defaults["building_attributes"]["battery_energy_capacities (kWh)"][str(id)] for id in ids]
-    current_solar_capacities = [annex_defaults["building_attributes"]["pv_power_capacities (kW)"][str(id)] for id in ids]
-
-    base_kwargs.update({
-        'battery_energy_capacities': current_battery_capacities,
-        'pv_power_capacities': current_solar_capacities
-    })
 
     # Set up probabilistic model of effiencies and take draws.
     n_draws = 100
