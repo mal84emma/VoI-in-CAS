@@ -62,7 +62,7 @@ if __name__ == '__main__':
     eta_samples = np.clip(eta_samples,0,1)
 
     # Set up scenario optimisation object.
-    num_scenarios = 3
+    num_scenarios = 25
 
     envs = []
 
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     lp.set_LP_parameters()
     lp_results = lp.solve_LP(verbose=True,ignore_dpp=True)
 
-    print('\nLP Stochastic Design Complete.')
+    print('\nStochastic LP Design Complete.')
     print('===================')
     print(lp_results['objective'])
     print(lp_results['objective_contrs'])
