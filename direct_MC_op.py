@@ -1,6 +1,7 @@
 """Directly optimise MC estimate of expected utility to solve prior problem."""
 
 import os
+import json
 import time
 import numpy as np
 import scipy.optimize as op
@@ -15,14 +16,16 @@ def cost_MC_estimate(x, ids, n_samples):
 
     # Define common parameters (this is hacky, think about changing)
     # ========================================================================
-    dataset_dir = os.path.join('data','A37_example_test')
+    dataset_dir = os.path.join('data','A37_analysis_test')
     opex_factor = 10
     pricing_dict = {'carbon':5e-1,'battery':1e3,'solar':2e3}
+    with open(os.path.join(dataset_dir,'metadata_ext.json'),'r') as json_file:
+        annex_defaults = json.load(json_file)
     base_kwargs = {
         'output_dir_path': dataset_dir,
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
-        'battery_power_capacities': [342.0], # [391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
+        'battery_power_capacities': [annex_defaults["building_attributes"]["battery_power_capacities (kW)"][str(id)] for id in ids],
         'battery_efficiencies': None,
         'pv_power_capacities': None,
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
@@ -86,7 +89,7 @@ def cost_MC_estimate(x, ids, n_samples):
 if __name__ == '__main__':
 
     seed = 42
-    ids = [11]
+    ids = [48]
     n_samples = 50
     lower_bounds = np.array([*[5e2]*len(ids),*[1e2]*len(ids)])
     upper_bounds = np.array([*[2e3]*len(ids),*[1.5e3]*len(ids)])
@@ -103,7 +106,7 @@ if __name__ == '__main__':
 # RESULTS
 # =======
 #
-# 23/7/23
-# [894.90959551 652.90553307] 4944989.411288872 Optimization terminated successfully.
-# Runtime: 52911.6 s
-# No. of fn evals: 261 @ 48 samples per MC estimate eval (24 processes mproc)
+# ...
+# ... 4944989.411288872 Optimization terminated successfully.
+# Runtime: ... s
+# No. of fn evals: ... @ 50 samples per MC estimate eval (25 processes mproc)

@@ -2,6 +2,7 @@
 
 import os
 import csv
+import json
 import time
 import numpy as np
 
@@ -13,7 +14,7 @@ from sys_eval import construct_and_evaluate_system
 if __name__ == '__main__':
 
     # Set up evaluation params.
-    dataset_dir = os.path.join('data','A37_example_test') # dataset directory
+    dataset_dir = os.path.join('data','A37_analysis_test') # dataset directory
     opex_factor = 10
     pricing_dict = {'carbon':5e-1,'battery':1e3,'solar':2e3}
 
@@ -22,16 +23,18 @@ if __name__ == '__main__':
     # ============================================================================
 
     # Set up base parameters of system.
-    #ids = [5,11,14,16,24,29]
-    ids = [11]
+    #ids = [0,3,9,11,12,15,16,25,26,32,38,44,45,48,49]
+    ids = [48]
 
     battery_efficiencies = [0.85]*len(ids) # 0.9 for Annex 37
+    with open(os.path.join(dataset_dir,'metadata_ext.json'),'r') as json_file:
+        annex_defaults = json.load(json_file)
 
     base_kwargs = {
         'output_dir_path': dataset_dir,
         'building_names': ['UCam_Building_%s'%id for id in ids],
         'battery_energy_capacities': None,
-        'battery_power_capacities': [342.0], #[391.0,342.0,343.0,306.0,598.0,571.0], # from Annex 37
+        'battery_power_capacities': [annex_defaults["building_attributes"]["battery_power_capacities (kW)"][str(id)] for id in ids],
         'battery_efficiencies': battery_efficiencies,
         'pv_power_capacities': None,
         'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
@@ -42,10 +45,8 @@ if __name__ == '__main__':
     }
 
     # Setup initial guess - from Annex 37.
-    #current_battery_capacities = [3127.0,2736.0,2746.0,2448.0,4788.0,4565.0]
-    current_battery_capacities = [2736.0]
-    #current_solar_capacities = [178.0,41.0,57.0,120.0,1349.0,257.0]
-    current_solar_capacities = [41.0]
+    current_battery_capacities = [annex_defaults["building_attributes"]["battery_energy_capacities (kWh)"][str(id)] for id in ids]
+    current_solar_capacities = [annex_defaults["building_attributes"]["pv_power_capacities (kW)"][str(id)] for id in ids]
 
     base_kwargs.update({
         'battery_energy_capacities': current_battery_capacities,

@@ -19,7 +19,7 @@ if __name__ == '__main__':
     design = False
 
     # Define test dataset.
-    dataset_dir = os.path.join('A37_example_test') # dataset directory
+    dataset_dir = os.path.join('A37_analysis_test') # dataset directory
     schema_path = os.path.join('data', dataset_dir, 'schema.json')
 
     # Initialise CityLearn environment object.
