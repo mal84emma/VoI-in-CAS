@@ -35,6 +35,8 @@ if __name__ == '__main__':
 
     for B in [1,2,3]:
 
+        print(B, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
         ids = b_ids[:B]
 
         # Setup system attributes
