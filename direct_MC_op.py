@@ -8,6 +8,8 @@ import scipy.optimize as op
 
 from mproc_utils import parallel_task, multi_proc_constr_and_eval_system
 
+
+
 def cost_MC_estimate(x, ids, n_samples):
 
     print(x)
@@ -91,8 +93,8 @@ if __name__ == '__main__':
     seed = 42
     ids = [48]
     n_samples = 50
-    lower_bounds = np.array([*[5e2]*len(ids),*[1e2]*len(ids)])
-    upper_bounds = np.array([*[2e3]*len(ids),*[1.5e3]*len(ids)])
+    lower_bounds = np.array([*[5e2]*len(ids),*[5e2]*len(ids)])
+    upper_bounds = np.array([*[2.5e3]*len(ids),*[2e3]*len(ids)])
     bounds = op.Bounds(lb=lower_bounds,ub=upper_bounds)
     #results = op.dual_annealing(cost_MC_estimate, bounds, args=(ids,n_samples), seed=seed)
     start = time.time()
@@ -106,7 +108,9 @@ if __name__ == '__main__':
 # RESULTS
 # =======
 #
-# ...
-# ... 4944989.411288872 Optimization terminated successfully.
-# Runtime: ... s
-# No. of fn evals: ... @ 50 samples per MC estimate eval (25 processes mproc)
+# 10/8/23
+# Optimization terminated successfully.
+# x: [1319.78879442 1066.40290714]
+# fun: 7221903.993116178
+# Runtime: 38319.2 s
+# No. of fn evals: 171 @ 50 samples per MC estimate eval (25 processes mproc)
