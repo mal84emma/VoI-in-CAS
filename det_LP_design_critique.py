@@ -11,6 +11,8 @@ from linmodel import LinProgModel
 from schema_builder import build_schema
 from sys_eval import construct_and_evaluate_system
 
+
+
 if __name__ == '__main__':
 
     # Set up evaluation params.
@@ -24,65 +26,93 @@ if __name__ == '__main__':
 
     # Set up base parameters of system.
     #ids = [0,3,9,11,12,15,16,25,26,32,38,44,45,48,49]
-    ids = [48]
+    b_ids = [48,32,16,0,25,15,3,11,12,49]
 
-    battery_efficiencies = [0.85]*len(ids) # 0.9 for Annex 37
-    with open(os.path.join(dataset_dir,'metadata_ext.json'),'r') as json_file:
-        annex_defaults = json.load(json_file)
+    results = {}
 
-    base_kwargs = {
-        'output_dir_path': dataset_dir,
-        'building_names': ['UCam_Building_%s'%id for id in ids],
-        'battery_energy_capacities': [annex_defaults["building_attributes"]["battery_energy_capacities (kWh)"][str(id)] for id in ids],
-        'battery_power_capacities': [annex_defaults["building_attributes"]["battery_power_capacities (kW)"][str(id)] for id in ids],
-        'battery_efficiencies': battery_efficiencies,
-        'pv_power_capacities': [annex_defaults["building_attributes"]["pv_power_capacities (kW)"][str(id)] for id in ids],
-        'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
-        'weather_data_path': 'weather.csv',
-        'carbon_intensity_data_path': 'carbon_intensity.csv',
-        'pricing_data_path': 'pricing.csv',
-        'schema_name': 'schema_temp'
-    }
+    for B in range(1,11):
 
-    schema_path = build_schema(**base_kwargs)
+        ids = b_ids[:B]
 
-    # Initialise CityLearn environment object.
-    env = CityLearnEnv(schema=schema_path)
+        battery_efficiencies = [0.85]*len(ids) # 0.9 for Annex 37
+        with open(os.path.join(dataset_dir,'metadata_ext.json'),'r') as json_file:
+            annex_defaults = json.load(json_file)
 
-    # Initialise Linear MPC object.
-    lp = LinProgModel(env=env)
-    lp.set_time_data_from_envs()
-    lp.generate_LP(clip_level='m',design=True,pricing_dict=pricing_dict,opex_factor=opex_factor)
-    lp.set_LP_parameters()
-    lp_results = lp.solve_LP(verbose=True,ignore_dpp=True)
+        base_kwargs = {
+            'output_dir_path': dataset_dir,
+            'building_names': ['UCam_Building_%s'%id for id in ids],
+            'battery_energy_capacities': [annex_defaults["building_attributes"]["battery_energy_capacities (kWh)"][str(id)] for id in ids],
+            'battery_power_capacities': [annex_defaults["building_attributes"]["battery_power_capacities (kW)"][str(id)] for id in ids],
+            'battery_efficiencies': battery_efficiencies,
+            'pv_power_capacities': [annex_defaults["building_attributes"]["pv_power_capacities (kW)"][str(id)] for id in ids],
+            'load_data_paths': ['UCam_Building_%s.csv'%id for id in ids],
+            'weather_data_path': 'weather.csv',
+            'carbon_intensity_data_path': 'carbon_intensity.csv',
+            'pricing_data_path': 'pricing.csv',
+            'schema_name': 'schema_temp'
+        }
 
-    print('\nLP Design Complete.')
-    print('===================')
-    print(lp_results['objective'])
-    print(lp_results['objective_contrs'])
-    print(lp_results['battery_capacities'])
-    print(lp_results['solar_capacities'])
-    print('\n')
+        schema_path = build_schema(**base_kwargs)
 
-    # Evaluate true cost of LP designed system with real controller.
-    # ============================================================================
-    eval_results = construct_and_evaluate_system(
-            lp_results['battery_capacities'], lp_results['solar_capacities'], battery_efficiencies,
-            base_kwargs, pricing_dict, opex_factor,
-            return_contrs=True, suppress_output=False
-        )
+        # Initialise CityLearn environment object.
+        env = CityLearnEnv(schema=schema_path)
 
-    print('\nTrue system performance.')
-    print('========================')
-    print(eval_results['objective'])
-    print(eval_results['objective_contrs'])
+        # Initialise Linear MPC object.
+        lp = LinProgModel(env=env)
+        lp.set_time_data_from_envs()
+        lp.generate_LP(clip_level='m',design=True,pricing_dict=pricing_dict,opex_factor=opex_factor)
+        lp.set_LP_parameters()
+        lp_results = lp.solve_LP(verbose=True,ignore_dpp=True)
 
-    # Report LP over-optimism.
-    # ============================================================================
-    print('\nLP Over-Optimism.')
-    print('=================')
-    print(f"{round(((eval_results['objective']-lp_results['objective'])/eval_results['objective'])*100,2)}%")
+        print('\nLP Design Complete.')
+        print('===================')
+        print(lp_results['objective'])
+        print(lp_results['objective_contrs'])
+        print(lp_results['battery_capacities'])
+        print(lp_results['solar_capacities'])
+        print('\n')
+
+        # Evaluate true cost of LP designed system with real controller.
+        # ============================================================================
+        eval_results = construct_and_evaluate_system(
+                lp_results['battery_capacities'], lp_results['solar_capacities'], battery_efficiencies,
+                base_kwargs, pricing_dict, opex_factor,
+                return_contrs=True, suppress_output=False
+            )
+
+        print('\nTrue system performance.')
+        print('========================')
+        print(eval_results['objective'])
+        print(eval_results['objective_contrs'])
+
+        # Report LP over-optimism.
+        # ============================================================================
+        print('\nLP Over-Optimism.')
+        print('=================')
+        print(f"{round(((eval_results['objective']-lp_results['objective'])/eval_results['objective'])*100,2)}%")
 
 
-    # TODO: Repeat analysis using real predictor - e.g. Pat's linear networks
-    # ============================================================================
+        # TODO: Repeat analysis using real predictor - e.g. Pat's linear networks
+        # ============================================================================
+
+        # Save results
+        # ============================================================================
+        results[B] = {
+            'LP': {
+                'objective':lp_results['objective'],
+                'objective_contrs':lp_results['objective_contrs'],
+                'battery_capacities':lp_results['battery_capacities'],
+                'solar_capacities':lp_results['solar_capacities']
+            },
+            'sim': {
+                'objective':eval_results['objective'],
+                'objective_contrs':eval_results['objective_contrs']
+            },
+            'optimism': {
+                'abs':eval_results['objective']-lp_results['objective'],
+                'perc':((eval_results['objective']-lp_results['objective'])/eval_results['objective'])*100
+            }
+        }
+
+    with open('det_LP_optimism_results.json','w') as json_file:
+        json.dump(results,json_file, indent=4)
