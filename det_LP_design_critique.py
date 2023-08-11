@@ -101,8 +101,8 @@ if __name__ == '__main__':
             'LP': {
                 'objective':lp_results['objective'],
                 'objective_contrs':lp_results['objective_contrs'],
-                'battery_capacities':lp_results['battery_capacities'],
-                'solar_capacities':lp_results['solar_capacities']
+                'battery_capacities':list(lp_results['battery_capacities']),
+                'solar_capacities':list(lp_results['solar_capacities'])
             },
             'sim': {
                 'objective':eval_results['objective'],
