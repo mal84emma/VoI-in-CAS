@@ -18,7 +18,8 @@ from schema_builder import build_schema
 def construct_and_evaluate_system(
         battery_capacities,solar_capacities,battery_efficiencies,
         base_kwargs,pricing_dict,opex_factor,
-        mproc_id=None, return_contrs=False, suppress_output=True
+        mproc_id=None, return_contrs=False, suppress_output=True,
+        no_control=False
     ):
     """Wrapper function for constructing & evaluating system for given parameter values."""
 
@@ -34,7 +35,10 @@ def construct_and_evaluate_system(
         })
     schema_path = build_schema(**base_kwargs)
 
-    eval_results = evaluate_system(schema_path,pricing_dict,opex_factor,suppress_output=suppress_output)
+    eval_results = evaluate_system(
+        schema_path,pricing_dict,opex_factor,
+        suppress_output=suppress_output,no_control=no_control
+    )
 
     if os.path.normpath(schema_path).split(os.path.sep)[-1] != 'schema.json':
         os.remove(schema_path)
@@ -52,7 +56,8 @@ def evaluate_system(
         clip_level: str = 'm',
         design: bool = True,
         tau: int = 48,
-        suppress_output = False
+        suppress_output = False,
+        no_control = False
     ) -> Dict[str,Any]:
     """Evaluate performance of system defined by schema with given
     costs and control characteristics.
@@ -69,8 +74,10 @@ def evaluate_system(
         design (bool, optional): Whether to include asset costs & use extended
             OPEX in reported costs. Defaults to True.
         tau (int, optional): Planning horizon for controller. Defaults to 48.
-        suppress_output (bool, optional): Wether to disable outputs to
-            terminal. Defaults to False
+        suppress_output (bool, optional): Whether to disable outputs to
+            terminal. Defaults to False.
+        no_control (bool, optional): Whether to not use battery control (used
+            when evaluating cost without assets). Defaults to False.
 
     Returns:
         Dict[str,Any]: Dictionary of system cost (objective) & breakdown.
@@ -103,7 +110,7 @@ def evaluate_system(
 
             # Compute MPC action.
             # ====================================================================
-            if num_steps <= (env.time_steps - 1) - tau:
+            if (num_steps <= (env.time_steps - 1) - tau) and (no_control==False):
                 # setup and solve predictive Linear Program model of system
                 lp_start = time.perf_counter()
                 lp.set_time_data_from_envs(t_start=num_steps, tau=tau, current_socs=current_socs) # load ground truth data
