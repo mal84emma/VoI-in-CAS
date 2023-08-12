@@ -33,9 +33,9 @@ if __name__ == '__main__':
 
     results = {}
 
-    for B in [1,2,3]:
+    for B,N in zip([1,2,3],[25,15,8]):
 
-        print(B, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        print(B, N, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
         ids = b_ids[:B]
 
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         eta_samples = np.random.normal(loc=mu,scale=sigma,size=(n_draws,len(ids)))
         eta_samples = np.clip(eta_samples,0,1)
 
-        num_scenarios = 10
+        num_scenarios = N
 
 
         # Solve stochastic LP.
