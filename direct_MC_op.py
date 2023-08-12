@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     seed = 42
     ids = [48]
-    n_samples = 50
+    n_samples = 100
     lower_bounds = np.array([*[5e2]*len(ids),*[5e2]*len(ids)])
     upper_bounds = np.array([*[2.5e3]*len(ids),*[2e3]*len(ids)])
     bounds = op.Bounds(lb=lower_bounds,ub=upper_bounds)
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 #
 # 10/8/23
 # Optimization terminated successfully.
-# x: [1319.78879442 1066.40290714]
-# fun: 7221903.993116178
-# Runtime: 38319.2 s
-# No. of fn evals: 171 @ 50 samples per MC estimate eval (25 processes mproc)
+# x: [1377.92566621 1023.84976221]
+# fun: 7225713.261815647
+# Runtime: 91728.8 s
+# No. of fn evals: 210 @ 100 samples per MC estimate eval (25 processes mproc)
